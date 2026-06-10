@@ -40,22 +40,46 @@ for repo in Repos:
         print(f"saltando {repo.name}")
         continue
     
-    instrucciones = """Eres un Senior Data Analyst & Automation Analyst. Crea un README.md profesional para este repositorio basándote en el código. 
-    Usa Markdown, explica la arquitectura, las dependencias y la lógica principal. No reveles datos sensibles (muy importante esto). Y no escribas 
-    como escriben en Linkedin, evita abusar de las oraciones adversativas (frases tipo LinkedIn). Sé muy técnico y muy preciso a la hora de detallar las tecnologías, al igual que
-    el valor agregado de este código a diferencia de otros en el mercado, detalla la estructura, enfatiza las librerías y el porqué de su uso, segmenta el código para explicar
-    las partes más fundamentales sin ser adulador sino, más bien, técnico."""
+    instrucciones = """Eres un Senior Data Analyst & Automation Analyst. Crea un README.md profesional, exhaustivo y estructurado para este repositorio basándote en el código proporcionado.
+    Usa Markdown y cumple estrictamente con los siguientes requisitos:
+    1. Incluye 'Badges' (escudos) estéticos al inicio, y si pueden llevar los links de la documentación, mejor. IMPORTANTE: NO INCLUYAS LAS VERSIONES, SOLO LA TECNOLOGÍA (ej. versión de Python, licencia, estado del proyecto).
+    1.1 Si puedes incluir imágenes de los badges, bien, si no pues no. Es importante aclarar que si tienes que documentar proyectos de SQL es BigQuery
+    2. Agrega un Índice (Table of Contents) navegable con enlaces ancla a cada sección para mejorar la experiencia del desarrollador.
+    3. Explica la arquitectura, las dependencias y la lógica principal.
+    4. En la sección de configuración, especifica explícitamente si se requieren dependencias a nivel de sistema operativo (ej. instalación de FFmpeg, Tesseract, controladores, etc.), no solo las librerías de Python.
+    5. Si el código genera salidas de datos estructurados (JSON, diccionarios, CSV), incluye un pequeño bloque de código de ejemplo mostrando la estructura esperada de esa salida para ilustrar los resultados.
+    6. Sé muy técnico y preciso al detallar las tecnologías y el valor agregado frente a otras soluciones, enfatizando el porqué del uso de ciertas librerías. Segmenta el código para explicar las partes fundamentales.
+    7. NO reveles datos sensibles, credenciales, tokens o IDs específicos bajo ninguna circunstancia.
+    8. Mantén un tono puramente técnico, analítico y directo. NO USES EMOJIS EN NINGUNA PARTE DEL README. Evita la adulación y NO escribas con el estilo de LinkedIn (evita abusar de oraciones adversativas o frases cliché)."""
     
-    prompt = f"Genera el README.md para este proyecto. Aquí está el código fuente (como puedes ver, está acumulado, entonces léelo bien):\n{acumulated_script}"
+    prompt = f"""Genera el README.md final para este proyecto aplicando todas las directrices de estructura solicitadas (badges, índice, requisitos de SO, ejemplos de salida). 
+    Aquí está el código fuente (está acumulado en un solo bloque, así que analízalo detalladamente por ruta de archivo para entender la integración):\n\n{acumulated_script}"""
 
-    respuesta = AI_User.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=instrucciones,
-            temperature=0.3
-        )
-    )
+    max_intentos = 5
+    respuesta = None
+
+    for intento in range(max_intentos):
+        try:
+            print(f"Generando README (Intento {intento + 1}/{max_intentos})...")
+            respuesta = AI_User.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=instrucciones,
+                    temperature=0.3
+                )
+            )
+            break
+        except Exception as error_api:
+            print(f"Servidor saturado o error: {error_api}")
+            if intento < max_intentos - 1:
+                print("Esperando 30 segundos antes de reintentar...")
+                time.sleep(60)
+            else:
+                print(f"Se agotaron los reintentos para {repo.name}. Saltando...")
+
+    if not respuesta:
+        continue
 
     readme_final = respuesta.text
     ruta_readme = "README.md"
@@ -69,16 +93,32 @@ for repo in Repos:
 
     prompt_traduccion = f"""Genera la traducción, al inglés, de esta documentación generada para un Readme.md de repositorios: {respuesta.text}. 
     Es importante que mantengas la literalidad del mensaje pero también las condiciones contextuales de la gramática anglosajona. 
-    Respeta los nombre originales de las variables y en el contexto explica su propósito, de ser necesario"""
+    Respeta los nombre originales de las variables y en el contexto explica su propósito, de ser necesario. Abstente solo de traducir, no quiero nada más, solo debes traducir y ya. No quiero observaciones tuyas, comentarios ni nada, solo traduce"""
 
-    answer = AI_User.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt_traduccion,
-        config=types.GenerateContentConfig(
-            system_instruction=instrucciones_traductor,
-            temperature=0.3
-        )
-    )
+    answer = None
+
+    for intento in range(max_intentos):
+        try:
+            print(f"Traduciendo README (Intento {intento + 1}/{max_intentos})...")
+            answer = AI_User.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt_traduccion,
+                config=types.GenerateContentConfig(
+                    system_instruction=instrucciones_traductor,
+                    temperature=0.3
+                )
+            )
+            break
+        except Exception as error_api:
+            print(f"Servidor saturado en traduccion: {error_api}")
+            if intento < max_intentos - 1:
+                print("Esperando 30 segundos antes de reintentar...")
+                time.sleep(60)
+            else:
+                print(f"Fallo la traduccion para {repo.name}.")
+
+    if not answer:
+        continue
 
     english_readme = answer.text
 
@@ -92,8 +132,6 @@ for repo in Repos:
 
     time.sleep(5)
 
-    #Inglés:
-
     try:
         file_md = repo.get_contents(readme_path)
         repo.update_file(readme_path, english_commit, english_readme, file_md.sha)
@@ -101,8 +139,6 @@ for repo in Repos:
     except:
         repo.create_file(readme_path, english_commit, english_readme)
         print(f"Readme from repo: {repo.name} created succesfully.")
-
-
 
     time.sleep(5)
     break
