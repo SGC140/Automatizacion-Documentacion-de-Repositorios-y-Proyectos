@@ -126,7 +126,7 @@ for repo in Repos:
                 answer = consultar_ia(prompt_traduccion, instrucciones_traductor)
                 break
             except Exception as error_api:
-                print(f"Servidor saturado en traduccion: {error_api}")
+                print(f"Servidor saturado en traduccion: {error_api}")                     
                 if intento < max_intentos - 1:
                     print("Esperando 60 segundos antes de reintentar...")
                     time.sleep(60)
