@@ -23,7 +23,7 @@ Groq_user = OpenAI(
 def consultar_ia(prompt, instrucciones):
 
     respuesta = Groq_user.chat.completions.create(
-        model="deepseek-r1-distill-llama-70b",
+        model="llama-3.3-70b-versatile",
         temperature=0.3,
         messages=[
             {
