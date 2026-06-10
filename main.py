@@ -15,7 +15,8 @@ Git = Github(auth=auth)
 Git_User = Git.get_user() 
 
 Gemini_API = os.getenv("API_GEMINI_KEY")
-AI_User = genai.Client(api_key=Gemini_API)
+Gemini_API_2 = os.getenv("API_KEY_GEMINI_PRO_2.5")
+AI_User = genai.Client(api_key=Gemini_API_2)
 
 with open("Consolidado_Documentación.txt", "r") as Historico:
     Repos_documentados = Historico.read().split("\n")
