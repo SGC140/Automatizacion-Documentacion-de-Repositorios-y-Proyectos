@@ -14,8 +14,30 @@ auth = Auth.Token(Git_TOKEN)
 Git = Github(auth=auth)
 Git_User = Git.get_user() 
 
-Gemini_API = os.getenv("API_GEMINI_KEY")
-AI_User = genai.Client(api_key=Gemini_API)
+Groq_API = os.getenv("GROQ_KEY")
+Groq_user = OpenAI(
+    api_key=Groq_API,
+    base_url="https://api.groq.com/openai/v1"
+)
+
+def consultar_ia(prompt, instrucciones):
+
+    respuesta = Groq_user.chat.completions.create(
+        model="deepseek-r1-distill-llama-70b",
+        temperature=0.3,
+        messages=[
+            {
+                "role": "system",
+                "content": instrucciones
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return respuesta.choices[0].message.content
 
 with open("Consolidado_Documentación.txt", "r") as Historico:
     Repos_documentados = Historico.read().split("\n")
@@ -69,15 +91,7 @@ for repo in Repos:
 
         for intento in range(max_intentos):
             try:
-                print(f"Generando README (Intento {intento + 1}/{max_intentos})...")
-                respuesta = AI_User.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=instrucciones,
-                        temperature=0.3
-                    )
-                )
+                respuesta = consultar_ia(prompt, instrucciones)
                 break
             except Exception as error_api:
                 print(f"Servidor saturado o error: {error_api}")
@@ -90,7 +104,7 @@ for repo in Repos:
         if not respuesta:
             continue
 
-        readme_final = respuesta.text
+        readme_final = respuesta
         ruta_readme = "README.md"
         readme_path = "README_English.md"
         commit = f"Docs: Autogenerado y automatizado README con agentes contextualizados con códigos iterativos para {repo.name}"
@@ -100,7 +114,7 @@ for repo in Repos:
 
         instrucciones_traductor = f"Eres un Senior Data Analyst & Automation Analyst experto y adicional a ello eres un traductor experto en lenguaje técnico del ámbito tech (SOLO DEBES GENERAR EL README, NADA MÁS)."
 
-        prompt_traduccion = f"""Genera la traducción, al inglés, de esta documentación generada para un Readme.md de repositorios: {respuesta.text}. 
+        prompt_traduccion = f"""Genera la traducción, al inglés, de esta documentación generada para un Readme.md de repositorios: {respuesta}. 
         Es importante que mantengas la literalidad del mensaje pero también las condiciones contextuales de la gramática anglosajona. 
         Respeta los nombre originales de las variables y en el contexto explica su propósito, de ser necesario. Abstente solo de traducir, no quiero nada más, solo debes traducir y ya. No quiero observaciones tuyas, comentarios ni nada, solo traduce"""
 
@@ -109,14 +123,7 @@ for repo in Repos:
         for intento in range(max_intentos):
             try:
                 print(f"Traduciendo README (Intento {intento + 1}/{max_intentos})...")
-                answer = AI_User.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt_traduccion,
-                    config=types.GenerateContentConfig(
-                        system_instruction=instrucciones_traductor,
-                        temperature=0.3
-                    )
-                )
+                answer = consultar_ia(prompt_traduccion, instrucciones_traductor)
                 break
             except Exception as error_api:
                 print(f"Servidor saturado en traduccion: {error_api}")
@@ -129,7 +136,7 @@ for repo in Repos:
         if not answer:
             continue
 
-        english_readme = answer.text
+        english_readme = answer
 
         try:
             archivo_md_existente = repo.get_contents(ruta_readme)
