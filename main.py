@@ -15,8 +15,8 @@ Git = Github(auth=auth)
 Git_User = Git.get_user() 
 
 Gemini_API = os.getenv("API_GEMINI_KEY")
-Gemini_API_2 = os.getenv("API_KEY_GEMINI_PRO_2.5")
-AI_User = genai.Client(api_key=Gemini_API_2)
+Gemini_API_2 = os.getenv("ANOTHER_API_KEY")
+AI_User = genai.Client(api_key=Gemini_API)
 
 with open("Consolidado_Documentación.txt", "r") as Historico:
     Repos_documentados = Historico.read().split("\n")
@@ -72,7 +72,7 @@ for repo in Repos:
             try:
                 print(f"Generando README (Intento {intento + 1}/{max_intentos})...")
                 respuesta = AI_User.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.5-flash',
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=instrucciones,
@@ -111,7 +111,7 @@ for repo in Repos:
             try:
                 print(f"Traduciendo README (Intento {intento + 1}/{max_intentos})...")
                 answer = AI_User.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.5-flash',
                     contents=prompt_traduccion,
                     config=types.GenerateContentConfig(
                         system_instruction=instrucciones_traductor,
@@ -150,8 +150,24 @@ for repo in Repos:
             repo.create_file(readme_path, english_commit, english_readme)
             print(f"Readme from repo: {repo.name} created succesfully.")
         
-        with open("Consolidado_Documentación.txt", "a") as Documento:
+        with open("Consolidado_Documentación.txt", "a", encoding= "utf-8") as Documento:
             Documento.write("\n"+repo.name)
+        
+        with open("Consolidado_Documentación.txt", "r") as Documento:
+            Contenido_actualizado = Documento.read()
+
+        commit_histórico = f"Actualización de los repositorios documentados. Adición de los README FROM: {repo.name}"
+        Path_Consolidado = "Consolidado_Documentación.txt"
+        Repo_actual = "Automatizacion-Documentacion-de-Repositorios-y-Proyectos"
+        for proyecto in Repos:
+            if Repo_actual in proyecto.name:
+                archivo_consolidado = proyecto.get_contents(Path_Consolidado)
+                proyecto.update_file(Path_Consolidado, commit_histórico, Contenido_actualizado, archivo_consolidado.sha)
+                print("Historial de Readmes autogenerados actualizado")
+                break
+                        
+
+
 
         time.sleep(5)
         
