@@ -55,7 +55,7 @@ def consolidado_GENAI(User_API_KEY, Nombre_Modelo, Instrucciones, Prompt):
         
         except Exception as error:
             if intento < Max_Intentos:
-                print("Reintentado en 60 segundos")
+                print(f"Error en {User_API_KEY} Reintentado en 60 segundos: {error}")
                 time.sleep(60)
             else:
                 print("Límite de intentos superados")
